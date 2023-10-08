@@ -22,7 +22,7 @@ struct PeopleData {
     height: String,
     weight: u32,
     active: bool,
-    // TODO: primary_position: _
+    primary_position: PrimaryPosition,
     use_name: String,
     use_last_name: String,
     middle_name: String,
@@ -33,8 +33,8 @@ struct PeopleData {
     is_verified: bool,
     draft_year: u32,
     mlb_debut_date: String,
-    // TODO: bat_side: _
-    // TODO: pitch_hand: _
+    bat_side: BatSide,
+    pitch_hand: PitchHand,
     name_first_last: String,
     name_slug: String,
     first_last_name: String,
@@ -46,4 +46,28 @@ struct PeopleData {
     full_lfm_name: String,
     strike_zone_top: f64,
     strike_zone_bottom: f64,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+struct PrimaryPosition {
+    code: String,
+    name: String,
+    #[serde(rename="type")]
+    position_type: String,
+    abbreviation: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+struct BatSide {
+    code: String,
+    description: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+struct PitchHand {
+    code: String,
+    description: String,
 }
