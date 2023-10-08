@@ -1,10 +1,14 @@
-use serde::{Serialize, Deserialize};
-
 use super::response::TeamsResponse;
+use chrono::Datelike;
+use serde::{Deserialize, Serialize};
+
+pub const MLB_SPORT_ID: u32 = 1;
+pub const AL_LEAGUE_ID: u32 = 103;
+pub const NL_LEAGUE_ID: u32 = 104;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
-struct TeamsRequest {
+pub struct TeamsRequest {
     /// Typically the year
     season: Option<String>,
     // activeStatus: Option<>,
@@ -19,7 +23,7 @@ struct TeamsRequest {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
-enum TeamsHydration {
+pub enum TeamsHydration {
     PreviousSchedule,
     NextSchedule,
     Venue,
@@ -47,8 +51,9 @@ enum TeamsHydration {
 
 impl Default for TeamsRequest {
     fn default() -> Self {
+        let current_year = chrono::Utc::now().year();
         Self {
-            season: Some("2023".into()), // TODO: Get current season
+            season: Some(current_year.to_string()),
             league_ids: None,
             sport_ids: Some(vec![1]),
             hydrate: None,
@@ -63,13 +68,13 @@ impl TeamsRequest {
     }
 
     pub async fn send(&self) -> TeamsResponse {
-        // TODO: FIX THIS
-        let params = serde_qs::to_string(self).unwrap();
-        let params = "sportId=1&season=2023".to_string();
+        let params = self.to_query_string();
         reqwest::get(format!("https://statsapi.mlb.com/api/v1/teams?{}", params))
-            .await.unwrap()
+            .await
+            .unwrap()
             .json::<TeamsResponse>()
-            .await.unwrap()
+            .await
+            .unwrap()
     }
 
     pub fn season(&mut self, id: String) -> &mut Self {
@@ -87,25 +92,64 @@ impl TeamsRequest {
         self
     }
 
+    #[deprecated(note = "Hydrations not yet supported.")]
     pub fn hydrate(&mut self, hydrate: Vec<TeamsHydration>) -> &mut Self {
         self.hydrate = Some(hydrate);
         self
     }
-    
+
+    #[deprecated(note = "Fields not yet supported.")]
     pub fn fields(&mut self, fields: Vec<String>) -> &mut Self {
         self.fields = Some(fields);
         self
     }
+
+    fn to_query_string(&self) -> String {
+        let mut params = vec![];
+        if let Some(season) = self.season.clone() {
+            params.push(format!("season={}", season).to_owned());
+        }
+        if let Some(league_ids) = self.league_ids.clone() {
+            params.push(format!("leagueIds={}", ids_to_string(league_ids)).to_owned());
+        }
+        if let Some(sport_ids) = self.sport_ids.clone() {
+            params.push(format!("sportIds={}", ids_to_string(sport_ids)).to_owned());
+        }
+
+        params.join("&")
+    }
+}
+
+fn ids_to_string(ids: Vec<u32>) -> String {
+    ids.into_iter()
+        .map(|id| id.to_string())
+        .collect::<Vec<_>>()
+        .join(",")
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    #[tokio::test]
-    async fn get_current_teams() {
-        let request = TeamsRequest::default();
-        request.send().await;
+    // This test only works if able to reach the API
+    // #[tokio::test]
+    // async fn get_current_teams() {
+    //     let request = TeamsRequest::default();
+    //     request.send().await;
+    // }
+
+    #[test]
+    fn valid_query_string() {
+        let query_string = TeamsRequest::new()
+            .sport_ids(vec![MLB_SPORT_ID])
+            .league_ids(vec![AL_LEAGUE_ID, NL_LEAGUE_ID])
+            .to_query_string();
+
+        let params: Vec<_> = query_string.split("&").collect();
+        println!("{:?}", params);
+        assert!(params.contains(&"season=2023"));
+        assert!(params.contains(&"leagueIds=103,104"));
+        assert!(params.contains(&"sportIds=1"));
+        assert_eq!(params.len(), 3);
     }
 }
-
